@@ -1,0 +1,8 @@
+[package]
+name = "onnx-test"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+onnx-runner = { path = "./onnx-runner" }
+
