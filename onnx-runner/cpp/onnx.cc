@@ -2,43 +2,55 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <iostream>
 #include <onnxruntime_cxx_api.h>
 
-void iris_test() {
-  Ort::Env env;
-  Ort::Session session{env, "iris.onnx", Ort::SessionOptions{nullptr}};
+class ONNXRunner {
+public:
+  ONNXRunner(const std::string &model)
+      : session_{env_, model.c_str(), Ort::SessionOptions{nullptr}} {}
 
-  std::array<float, 10 * 4> input = {
-      6.1, 2.8, 4.7, 1.2, 5.7, 3.8, 1.7, 0.3, 7.7, 2.6, 6.9, 2.3, 6.,  2.9,
-      4.5, 1.5, 6.8, 2.8, 4.8, 1.4, 5.4, 3.4, 1.5, 0.4, 5.6, 2.9, 3.6, 1.3,
-      6.9, 3.1, 5.1, 2.3, 6.2, 2.2, 4.5, 1.5, 5.8, 2.7, 3.9, 1.2,
-  };
-  std::array<int64_t, 10> result{};
+  void Run(const int64_t *input_shape, std::size_t input_shape_size,
+           const int64_t *output_shape, std::size_t output_shape_size,
+           const char *const *input_names, std::size_t input_names_size,
+           const char *const *output_names, std::size_t output_names_size,
+           float *input, std::size_t input_size, int64_t *output,
+           std::size_t output_size) {
+    auto memory_info =
+        Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
 
-  std::array<int64_t, 2> input_shape{10, 4};
-  std::array<int64_t, 1> output_shape{10};
+    auto input_tensor = Ort::Value::CreateTensor<float>(
+        memory_info, input, input_size, input_shape, input_shape_size);
+    auto output_tensor = Ort::Value::CreateTensor<int64_t>(
+        memory_info, output, output_size, output_shape, output_shape_size);
 
-  auto memory_info =
-      Ort::MemoryInfo::CreateCpu(OrtDeviceAllocator, OrtMemTypeCPU);
-
-  auto input_tensor =
-      Ort::Value::CreateTensor<float>(memory_info, input.data(), input.size(),
-                                      input_shape.data(), input_shape.size());
-  auto output_tensor = Ort::Value::CreateTensor<int64_t>(
-      memory_info, result.data(), result.size(), output_shape.data(),
-      output_shape.size());
-
-  std::array<const char *, 1> input_names = {"inputs"};
-  std::array<const char *, 1> output_names = {"label"};
-
-  session.Run(Ort::RunOptions{nullptr}, input_names.data(), &input_tensor,
-              input_names.size(), output_names.data(), &output_tensor,
-              output_names.size());
-
-  std::cout << "Result: ";
-  for (auto i : result) {
-    std::cout << i << " ";
+    session_.Run(Ort::RunOptions{nullptr}, input_names, &input_tensor,
+                 input_names_size, output_names, &output_tensor,
+                 output_names_size);
   }
-  std::cout << std::endl;
+
+private:
+  Ort::Env env_;
+  Ort::Session session_;
+};
+
+ONNXRunner *onnx_runner_new(const char *model_path) {
+  return new ONNXRunner(model_path);
+}
+
+void onnx_runner_free(ONNXRunner *runner) { delete runner; }
+
+void onnx_runner_run(ONNXRunner *runner, const int64_t *input_shape,
+                     std::size_t input_shape_size, const int64_t *output_shape,
+                     std::size_t output_shape_size,
+                     const char *const *input_names,
+                     std::size_t input_names_size,
+                     const char *const *output_names,
+                     std::size_t output_names_size, float *input,
+                     std::size_t input_size, int64_t *output,
+                     std::size_t output_size) {
+  runner->Run(input_shape, input_shape_size, output_shape, output_shape_size,
+              input_names, input_names_size, output_names, output_names_size,
+              input, input_size, output, output_size);
 }

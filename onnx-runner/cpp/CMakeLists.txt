@@ -22,3 +22,4 @@ target_link_libraries(onnx-runner PRIVATE ${ONNXRUNTIME_LIB})
 
 install (TARGETS onnx-runner LIBRARY DESTINATION .)
 install (DIRECTORY ${ONNXRUNTIME_DIR}/lib DESTINATION .)
+install (FILES onnx.h DESTINATION include)
